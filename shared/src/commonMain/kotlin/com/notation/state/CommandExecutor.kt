@@ -73,13 +73,13 @@ object CommandExecutor {
         val reverseCommands = mutableListOf<ScoreCommand>()
         for (elementId in cmd.elementIds) {
             val location = score.findElement(elementId) ?: continue
-            val part = score.parts[location.partIndex]
+            val partId = location.partId
             val element = location.element
             when (element) {
                 is Note -> {
                     reverseCommands.add(
                         ScoreCommand.InsertNote(
-                            partId = part.id,
+                            partId = partId,
                             measureIndex = location.measureIndex,
                             pitch = element.pitch,
                             duration = element.duration,
@@ -104,7 +104,7 @@ object CommandExecutor {
                     // For now, we capture the first pitch.
                     reverseCommands.add(
                         ScoreCommand.InsertNote(
-                            partId = part.id,
+                            partId = partId,
                             measureIndex = location.measureIndex,
                             pitch = element.pitches.firstOrNull() ?: Pitch.MIDDLE_C,
                             duration = element.duration,
@@ -230,21 +230,27 @@ object CommandExecutor {
     // ─── InsertMeasure ───────────────────────────────────────────────────
 
     private fun executeInsertMeasure(score: Score, cmd: ScoreCommand.InsertMeasure): ExecutionResult {
-        val newMeasure = Measure(
-            timeSignature = cmd.timeSignature
-        )
         val newParts = score.parts.map { part ->
             val insertAt = (cmd.afterMeasure + 1).coerceIn(0, part.measures.size)
             val mutableMeasures = part.measures.toMutableList()
-            repeat(cmd.count) {
-                mutableMeasures.add(insertAt, newMeasure)
+            repeat(cmd.count) { i ->
+                val newMeasure = Measure(
+                    number = insertAt + i + 1,
+                    timeSignature = cmd.timeSignature
+                )
+                mutableMeasures.add(insertAt + i, newMeasure)
+            }
+            // Renumber subsequent measures
+            for (j in (insertAt + cmd.count) until mutableMeasures.size) {
+                mutableMeasures[j] = mutableMeasures[j].copy(number = j + 1)
             }
             part.copy(measures = mutableMeasures.toPersistentList())
         }.toPersistentList()
 
         val newScore = score.copy(parts = newParts)
         val reverse = ScoreCommand.DeleteMeasures(
-            measureRange = (cmd.afterMeasure + 1)..(cmd.afterMeasure + cmd.count),
+            startMeasure = cmd.afterMeasure + 1,
+            endMeasure = cmd.afterMeasure + cmd.count,
             description = "Undo ${cmd.description}"
         )
         return ExecutionResult(newScore, reverse)
@@ -267,6 +273,10 @@ object CommandExecutor {
             val mutableMeasures = part.measures.toMutableList()
             if (start < endExclusive) {
                 mutableMeasures.subList(start, endExclusive).clear()
+            }
+            // Renumber remaining measures
+            for (j in start until mutableMeasures.size) {
+                mutableMeasures[j] = mutableMeasures[j].copy(number = j + 1)
             }
             part.copy(measures = mutableMeasures.toPersistentList())
         }.toPersistentList()
