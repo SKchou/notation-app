@@ -71,9 +71,12 @@ sealed interface ScoreCommand {
     /** Delete measures by range (inclusive start and end). */
     @Serializable
     data class DeleteMeasures(
-        val measureRange: IntRange,
+        val startMeasure: Int,
+        val endMeasure: Int,
         override val description: String = "Delete Measures"
-    ) : ScoreCommand
+    ) : ScoreCommand {
+        val measureRange: IntRange get() = startMeasure..endMeasure
+    }
 
     /** Change the time signature at a given measure. */
     @Serializable

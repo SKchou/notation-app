@@ -1,5 +1,6 @@
 package com.notation.model
 
+import kotlin.jvm.JvmInline
 import kotlinx.serialization.Serializable
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf

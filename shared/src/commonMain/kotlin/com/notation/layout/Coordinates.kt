@@ -1,5 +1,6 @@
 package com.notation.layout
 
+import kotlin.jvm.JvmInline
 import kotlin.math.roundToInt
 
 /**

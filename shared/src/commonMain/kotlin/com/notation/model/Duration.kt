@@ -1,5 +1,6 @@
 package com.notation.model
 
+import kotlin.jvm.JvmInline
 import kotlinx.serialization.Serializable
 
 /**

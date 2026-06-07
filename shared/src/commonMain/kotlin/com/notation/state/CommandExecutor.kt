@@ -53,14 +53,12 @@ object CommandExecutor {
 
     private fun executeInsertNote(score: Score, cmd: ScoreCommand.InsertNote): ExecutionResult {
         val note = Note(
-            id = ElementId.generate(),
+            id = ElementId(),
             duration = cmd.duration,
-            voice = cmd.voice,
             position = cmd.position,
-            pitch = cmd.pitch,
-            velocity = cmd.velocity
+            pitch = cmd.pitch
         )
-        val newScore = score.addElement(cmd.partId, cmd.measureIndex, note)
+        val newScore = score.addElement(cmd.partId, cmd.measureIndex, cmd.voice, note)
         val reverse = ScoreCommand.DeleteElements(
             elementIds = setOf(note.id),
             description = "Undo ${cmd.description}"
@@ -85,9 +83,9 @@ object CommandExecutor {
                             measureIndex = location.measureIndex,
                             pitch = element.pitch,
                             duration = element.duration,
-                            voice = element.voice,
+                            voice = location.voiceId,
                             position = element.position,
-                            velocity = element.velocity,
+                            velocity = 80,
                             description = "Undo Delete"
                         )
                     )
@@ -110,9 +108,9 @@ object CommandExecutor {
                             measureIndex = location.measureIndex,
                             pitch = element.pitches.firstOrNull() ?: Pitch.MIDDLE_C,
                             duration = element.duration,
-                            voice = element.voice,
+                            voice = location.voiceId,
                             position = element.position,
-                            velocity = element.velocity,
+                            velocity = 80,
                             description = "Undo Delete"
                         )
                     )
@@ -140,7 +138,7 @@ object CommandExecutor {
 
         val element = location.element
         val oldPitch: Pitch
-        val newElement: Element
+        val newElement: MusicElement
 
         when (element) {
             is Note -> {
@@ -180,7 +178,7 @@ object CommandExecutor {
 
         val element = location.element
         val oldDuration = element.duration
-        val newElement: Element = when (element) {
+        val newElement: MusicElement = when (element) {
             is Note -> element.copy(duration = cmd.newDuration)
             is Chord -> element.copy(duration = cmd.newDuration)
             is Rest -> element.copy(duration = cmd.newDuration)
@@ -202,14 +200,14 @@ object CommandExecutor {
         for (elementId in cmd.elementIds) {
             val location = current.findElement(elementId) ?: continue
             val element = location.element
-            val transposedElement: Element? = when (element) {
+            val transposedElement: MusicElement? = when (element) {
                 is Note -> {
-                    val newMidi = (element.pitch.toMidiNote() + cmd.semitones).coerceIn(0, 127)
+                    val newMidi = (element.pitch.midiNote + cmd.semitones).coerceIn(0, 127)
                     element.copy(pitch = Pitch.fromMidiNote(newMidi))
                 }
                 is Chord -> {
                     val newPitches = element.pitches.map { pitch ->
-                        val newMidi = (pitch.toMidiNote() + cmd.semitones).coerceIn(0, 127)
+                        val newMidi = (pitch.midiNote + cmd.semitones).coerceIn(0, 127)
                         Pitch.fromMidiNote(newMidi)
                     }.toPersistentList()
                     element.copy(pitches = newPitches)
@@ -298,7 +296,7 @@ object CommandExecutor {
         }.toPersistentList()
 
         val oldTimeSig = score.parts.firstOrNull()?.measures?.getOrNull(cmd.measureNumber)?.timeSignature
-            ?: score.globalTimeSignature
+            ?: TimeSignature.COMMON_TIME
 
         val newScore = score.copy(parts = newParts)
         val reverse = ScoreCommand.ChangeTimeSignature(
@@ -313,7 +311,7 @@ object CommandExecutor {
 
     private fun executeChangeKeySignature(score: Score, cmd: ScoreCommand.ChangeKeySignature): ExecutionResult {
         val oldKeySig = score.parts.firstOrNull()?.measures?.getOrNull(cmd.measureNumber)?.keySignature
-            ?: score.globalKeySignature
+            ?: KeySignature(0)
 
         val newParts = score.parts.map { part ->
             if (cmd.measureNumber < part.measures.size) {
@@ -341,7 +339,7 @@ object CommandExecutor {
             ?: return ExecutionResult(score, cmd)
 
         val element = location.element
-        val newElement: Element = when (element) {
+        val newElement: MusicElement = when (element) {
             is Note -> {
                 if (cmd.articulation in element.articulations) return ExecutionResult(score, cmd)
                 element.copy(articulations = element.articulations.add(cmd.articulation))
@@ -369,7 +367,7 @@ object CommandExecutor {
             ?: return ExecutionResult(score, cmd)
 
         val element = location.element
-        val newElement: Element = when (element) {
+        val newElement: MusicElement = when (element) {
             is Note -> {
                 val idx = element.articulations.indexOf(cmd.articulation)
                 if (idx < 0) return ExecutionResult(score, cmd)
@@ -400,16 +398,16 @@ object CommandExecutor {
 
         val element = location.element
         val oldDynamic: Dynamic?
-        val newElement: Element
+        val newElement: MusicElement
 
         when (element) {
             is Note -> {
-                oldDynamic = element.dynamic
-                newElement = element.copy(dynamic = cmd.dynamic)
+                oldDynamic = element.dynamics
+                newElement = element.copy(dynamics = cmd.dynamic)
             }
             is Chord -> {
-                oldDynamic = element.dynamic
-                newElement = element.copy(dynamic = cmd.dynamic)
+                oldDynamic = element.dynamics
+                newElement = element.copy(dynamics = cmd.dynamic)
             }
             is Rest -> return ExecutionResult(score, cmd) // no dynamics on rests
         }
@@ -430,7 +428,7 @@ object CommandExecutor {
             ?: return ExecutionResult(score, cmd)
 
         val element = location.element
-        val newElement: Element = when (element) {
+        val newElement: MusicElement = when (element) {
             is Note -> element.copy(tieForward = !element.tieForward)
             is Chord -> element.copy(tieForward = !element.tieForward)
             is Rest -> return ExecutionResult(score, cmd) // no ties on rests

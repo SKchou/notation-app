@@ -69,13 +69,13 @@ class ScoreStore(initialScore: Score) {
      */
     fun dispatch(command: ScoreCommand) {
         val currentScore = _score.value
-        val result = CommandExecutor.execute(currentScore, command) ?: return
+        val result = CommandExecutor.execute(currentScore, command)
 
         _score.value = result.newScore
 
         // Push the reverse command onto the undo stack
         undoStack.addLast(UndoEntry(
-            description = result.description,
+            description = command.description,
             reverseCommand = result.reverseCommand
         ))
 
@@ -101,7 +101,7 @@ class ScoreStore(initialScore: Score) {
 
         val entry = undoStack.removeLast()
         val currentScore = _score.value
-        val result = CommandExecutor.execute(currentScore, entry.reverseCommand) ?: return
+        val result = CommandExecutor.execute(currentScore, entry.reverseCommand)
 
         _score.value = result.newScore
 
@@ -124,7 +124,7 @@ class ScoreStore(initialScore: Score) {
 
         val entry = redoStack.removeLast()
         val currentScore = _score.value
-        val result = CommandExecutor.execute(currentScore, entry.reverseCommand) ?: return
+        val result = CommandExecutor.execute(currentScore, entry.reverseCommand)
 
         _score.value = result.newScore
 
