@@ -19,8 +19,8 @@ class AppState: ObservableObject {
             measureCount: 1
         )
         
-        // Use a default implementation of GlyphMetrics bridging to SMuFL JSON
-        self.metrics = AppleGlyphMetrics()
+        // Use the DefaultGlyphMetrics exported from KMP
+        self.metrics = DefaultGlyphMetrics()
         self.layoutEngine = LayoutEngine(engravingRules: EngravingRules.Companion.shared.DEFAULT, glyphMetrics: self.metrics)
         self.commandExecutor = CommandExecutor.shared
         
@@ -41,14 +41,3 @@ class AppState: ObservableObject {
     }
 }
 
-/// A simple bridge for GlyphMetrics. In a real app, this parses bravura_metadata.json
-class AppleGlyphMetrics: GlyphMetrics {
-    func getBoundingBox(codepoint: String) -> BoundingBox {
-        // Default dummy bounding box for now
-        return BoundingBox(x: StaffSpaces(value: 0.0), y: StaffSpaces(value: -1.0), width: StaffSpaces(value: 1.0), height: StaffSpaces(value: 2.0))
-    }
-    
-    func getAdvanceWidth(codepoint: String) -> StaffSpaces {
-        return StaffSpaces(value: 1.0)
-    }
-}

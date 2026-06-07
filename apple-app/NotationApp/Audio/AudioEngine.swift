@@ -30,9 +30,9 @@ class ScoreAudioEngine {
     /// Translates a Kotlin AudioEvent to an immediate MIDI message
     /// In a real app, this would use a timeline scheduler
     func playEvent(_ event: AudioEvent) {
-        if let noteOn = event as? AudioEvent.NoteOn {
+        if let noteOn = event as? AudioEventNoteOn {
             sampler.startNote(UInt8(noteOn.midiNote), withVelocity: UInt8(noteOn.velocity), onChannel: UInt8(noteOn.channel))
-        } else if let noteOff = event as? AudioEvent.NoteOff {
+        } else if let noteOff = event as? AudioEventNoteOff {
             sampler.stopNote(UInt8(noteOff.midiNote), onChannel: UInt8(noteOff.channel))
         }
     }
